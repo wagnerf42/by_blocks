@@ -1,6 +1,5 @@
-use super::DownGradedProducer;
 use rayon::iter::plumbing::{
-    bridge_unindexed, Folder, Producer, ProducerCallback, Reducer, UnindexedConsumer,
+    bridge_producer_consumer, Folder, Producer, ProducerCallback, Reducer, UnindexedConsumer,
 };
 use rayon::prelude::*;
 
@@ -21,30 +20,29 @@ where
     S: Iterator<Item = usize>,
 {
     type Output = C::Result;
-    fn callback<P: Producer<Item = T>>(self, producer: P) -> Self::Output {
-        let init = self.consumer.split_off_left().into_folder().complete();
-        let consumer = self.consumer;
+    fn callback<P: Producer<Item = T>>(mut self, mut producer: P) -> Self::Output {
         let mut remaining_len = self.len;
-        self.sizes
-            .scan(Some(producer), |producer, size| {
-                if remaining_len == 0 || consumer.full() {
-                    None
-                } else {
-                    let real_producer = producer.take().unwrap();
-                    let real_size = remaining_len.min(size);
-                    remaining_len -= real_size;
-                    let (left, right) = real_producer.split_at(real_size);
-                    *producer = Some(right);
-                    Some(DownGradedProducer {
-                        len: size,
-                        indexed_producer: left,
-                    })
-                }
-            })
-            .map(|producer| bridge_unindexed(producer, consumer.split_off_left()))
-            .fold(init, |left_res, right_res| {
-                consumer.to_reducer().reduce(left_res, right_res)
-            })
+        let mut consumer = self.consumer;
+        // TODO: is it really the way to get to identity ?
+        let (left_consumer, right_consumer, _) = consumer.split_at(0);
+        let mut res = left_consumer.into_folder().complete();
+        consumer = right_consumer;
+        while remaining_len > 0 && !consumer.full() {
+            let size = self.sizes.next().unwrap_or(std::usize::MAX);
+            let real_size = remaining_len.min(size);
+            remaining_len -= real_size;
+            let (left, right) = producer.split_at(real_size);
+            producer = right;
+            // TODO: should we care about this reducer ?
+            // TODO: why on earth do we care about left and right consumers ?
+            let (left_consumer, right_consumer, _) = consumer.split_at(real_size);
+            consumer = right_consumer;
+            res = consumer.to_reducer().reduce(
+                res,
+                bridge_producer_consumer(real_size, left, left_consumer),
+            );
+        }
+        res
     }
 }
 
