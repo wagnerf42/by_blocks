@@ -8,5 +8,4 @@ edition = "2018"
 
 [dependencies]
 rayon={git="https://github.com/wagnerf42/rayon", branch="tracing"}
-fast-tracer={git="https://github.com/wagnerf42/fast-tracer"}
-tracing="0.1.19"
+fast-tracer={path="../fast-tracer"}

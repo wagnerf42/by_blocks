@@ -1,10 +1,8 @@
 use by_blocks::prelude::*;
-use fast_tracer::{svg, FastSubscriber};
+use fast_tracer::svg;
 use rayon::prelude::*;
 
 fn main() {
-    let my_subscriber = FastSubscriber::new();
-    tracing::subscriber::set_global_default(my_subscriber).expect("setting tracing default failed");
     println!("try me with two threads");
     svg("blocked_find.svg", || {
         let start = std::time::Instant::now();
