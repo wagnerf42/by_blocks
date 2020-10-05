@@ -1,0 +1,3 @@
+- we need to reset time in the svg
+- we need to make reduce_iter work even without by_blocks
+- we need to double check performance gains are due to blocks in reduce_iter
