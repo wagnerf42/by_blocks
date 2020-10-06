@@ -7,8 +7,12 @@
   i guess it is ok because we have few blocks.
   it was introduced because the prefix use rayon::current_thread_index
   and it was called from outside the pool
+  ---> it is not ok because the first block is not reduced correctly
 
 - there is a bug in prefix at blocksize of 100_000_000 or more
     ---> check that final list iterator as only one element
 - block sizes have 0 impact in performance in prefix
    ----> my guess is that reduce_iter is bad without by_blocks
+   ----> yes, it's true
+
+---> all these problems can be fixed by having by_blocks_iter instead of reduce_iter
