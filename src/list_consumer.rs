@@ -1,8 +1,8 @@
 use rayon::iter::plumbing::{Consumer, Folder, Reducer, UnindexedConsumer};
 use std::collections::LinkedList;
 
-struct ListConsumer<C> {
-    consumer: C,
+pub(super) struct ListConsumer<C> {
+    pub(super) consumer: C,
 }
 
 impl<Item, C: Consumer<Item>> Consumer<Item> for ListConsumer<C> {
@@ -42,7 +42,7 @@ impl<Item, C: UnindexedConsumer<Item>> UnindexedConsumer<Item> for ListConsumer<
     }
 }
 
-struct ListFolder<F> {
+pub(super) struct ListFolder<F> {
     folder: F,
 }
 
@@ -54,7 +54,7 @@ where
     fn full(&self) -> bool {
         self.folder.full()
     }
-    fn consume(self, item: Item) -> Self {
+    fn consume(mut self, item: Item) -> Self {
         self.folder = (self.folder).consume(item);
         self
     }
@@ -71,12 +71,12 @@ where
     }
 }
 
-struct ListReducer<R> {
+pub(super) struct ListReducer<R> {
     phantom: std::marker::PhantomData<R>,
 }
 
 impl<R> Reducer<LinkedList<R>> for ListReducer<R> {
-    fn reduce(self, left: LinkedList<R>, right: LinkedList<R>) -> LinkedList<R> {
+    fn reduce(self, mut left: LinkedList<R>, mut right: LinkedList<R>) -> LinkedList<R> {
         left.append(&mut right);
         left
     }
