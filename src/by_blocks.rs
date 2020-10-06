@@ -23,10 +23,7 @@ where
     fn callback<P: Producer<Item = T>>(mut self, mut producer: P) -> Self::Output {
         let mut remaining_len = self.len;
         let mut consumer = self.consumer;
-        // TODO: is it really the way to get to identity ?
-        let (left_consumer, right_consumer, _) = consumer.split_at(0);
-        let mut res = left_consumer.into_folder().complete();
-        consumer = right_consumer;
+        let mut res = None;
         while remaining_len > 0 && !consumer.full() {
             let size = self.sizes.next().unwrap_or(std::usize::MAX);
             let real_size = remaining_len.min(size);
@@ -37,12 +34,16 @@ where
             // TODO: why on earth do we care about left and right consumers ?
             let (left_consumer, right_consumer, _) = consumer.split_at(real_size);
             consumer = right_consumer;
-            res = consumer.to_reducer().reduce(
-                res,
-                bridge_producer_consumer(real_size, left, left_consumer),
-            );
+            if let Some(current_res) = res {
+                res = Some(consumer.to_reducer().reduce(
+                    current_res,
+                    bridge_producer_consumer(real_size, left, left_consumer),
+                ));
+            } else {
+                res = Some(bridge_producer_consumer(real_size, left, left_consumer))
+            }
         }
-        res
+        res.unwrap_or_else(|| consumer.into_folder().complete())
     }
 }
 

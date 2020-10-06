@@ -1,2 +1,14 @@
 - we need to make reduce_iter work even without by_blocks
-- we need to double check performance gains are due to blocks in reduce_iter
+    ---> especially now that it is used in prefix example
+- we need to double check performance gains for filter_collect
+    ---> why gains on desktop but not on laptop ? is it cache size ? do i take right size ?
+    ---> we need to get back the task hover in the logs
+- is it ok to have an Option in by_blocks:26 ?
+  i guess it is ok because we have few blocks.
+  it was introduced because the prefix use rayon::current_thread_index
+  and it was called from outside the pool
+
+- there is a bug in prefix at blocksize of 100_000_000 or more
+    ---> check that final list iterator as only one element
+- block sizes have 0 impact in performance in prefix
+   ----> my guess is that reduce_iter is bad without by_blocks

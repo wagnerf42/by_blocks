@@ -28,25 +28,26 @@ fn main() {
     println!("********* filter collect ********");
     let v2 = svg("blocked_filter_collect.svg", || {
         let start = std::time::Instant::now();
-        let v2: Vec<i32> = (0..100_000_000)
+        let v2: Vec<i32> = (0..16_000_000)
             .into_par_iter()
-            .by_blocks(std::iter::repeat(8_000_000))
+            .by_blocks(std::iter::repeat(1_000_000))
             .filter(|&e| e % 2 == 0)
             .fold(Vec::new, |mut v, e| {
                 v.push(e);
                 v
             })
-            .reduce_iter(Vec::new, |mut v1, mut v2| {
-                v1.append(&mut v2);
+            .reduce_iter(|mut v1, v2| {
+                v1.extend(v2);
                 v1
-            });
+            })
+            .unwrap();
         println!("by blocks: {:?}", start.elapsed());
         v2
     })
     .expect("failed saving svg");
     let v = svg("rayon_collect.svg", || {
         let start = std::time::Instant::now();
-        let v: Vec<i32> = (0..100_000_000)
+        let v: Vec<i32> = (0..16_000_000)
             .into_par_iter()
             .filter(|&e| e % 2 == 0)
             .collect();
@@ -56,4 +57,70 @@ fn main() {
     .expect("failed saving");
 
     assert_eq!(v, v2);
+
+    println!("******* prefix ********");
+
+    // this code is highly radio-active
+    // it is only here for demonstration purposes
+    // so brace yourselves
+
+    let mut v = vec![1u64; 100_000_000];
+    let start = std::time::Instant::now();
+    let init_values = vec![0u64; rayon::current_num_threads()];
+    v.par_iter_mut()
+        .fold(
+            || {
+                let thread = rayon::current_thread_index().unwrap();
+                let init = &init_values[thread];
+                let p = init as *const u64 as *mut u64;
+                let r = unsafe { p.as_mut() }.unwrap();
+                *r = 0;
+                r
+            },
+            |old_e, e| {
+                *e += *old_e;
+                e
+            },
+        )
+        .reduce_iter(|e1, e2| {
+            let mut start = e1 as *mut u64;
+            let end = e2 as *mut _;
+            let size = (end as usize - start as usize) / 8; // already one less
+            start = unsafe { start.add(1) };
+            let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
+            slice.par_iter_mut().for_each(|e| *e += *e1);
+            e2
+        });
+    println!("rayon: {:?}", start.elapsed());
+    assert!(v.into_iter().eq(1..=100_000_000));
+    let mut v = vec![1u64; 100_000_000];
+    let start = std::time::Instant::now();
+    let init_values = vec![0u64; rayon::current_num_threads()];
+    v.par_iter_mut()
+        .by_blocks(std::iter::repeat(4_000_000))
+        .fold(
+            || {
+                let thread = rayon::current_thread_index().unwrap();
+                let init = &init_values[thread];
+                let p = init as *const u64 as *mut u64;
+                let r = unsafe { p.as_mut() }.unwrap();
+                *r = 0;
+                r
+            },
+            |old_e, e| {
+                *e += *old_e;
+                e
+            },
+        )
+        .reduce_iter(|e1, e2| {
+            let mut start = e1 as *mut u64;
+            let end = e2 as *mut _;
+            let size = (end as usize - start as usize) / 8;
+            start = unsafe { start.add(1) };
+            let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
+            slice.par_iter_mut().for_each(|e| *e += *e1);
+            e2
+        });
+    println!("by_blocks: {:?}", start.elapsed());
+    assert!(v.into_iter().eq(1..=100_000_000));
 }

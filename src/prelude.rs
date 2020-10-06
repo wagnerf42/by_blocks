@@ -11,9 +11,8 @@ pub trait BlockedParallelIterator: IndexedParallelIterator {
 }
 
 pub trait BlockedReducingIterator: ParallelIterator {
-    fn reduce_iter<ID, R>(self, identity: ID, reduce: R) -> Self::Item
+    fn reduce_iter<R>(self, reduce: R) -> Option<Self::Item>
     where
-        ID: Fn() -> Self::Item + Sync,
         R: Fn(Self::Item, Self::Item) -> Self::Item + Sync,
     {
         let left_reduce = |mut a: LinkedList<Self::Item>, mut b: LinkedList<Self::Item>| {
@@ -21,7 +20,6 @@ pub trait BlockedReducingIterator: ParallelIterator {
             a
         };
         let reduce_ref = &reduce;
-        //TODO:have options instead of calling identity
         let rightmost_reduce = |a: LinkedList<Self::Item>, b: LinkedList<Self::Item>| {
             let mut a_iter = a.into_iter();
             let first_of_a = a_iter.next();
@@ -29,7 +27,13 @@ pub trait BlockedReducingIterator: ParallelIterator {
                 std::iter::once(a_iter.chain(b.into_iter()).fold(first, reduce_ref))
                     .collect::<LinkedList<_>>()
             } else {
-                b
+                if b.is_empty() {
+                    b
+                } else {
+                    let mut b_iter = b.into_iter();
+                    let first_of_b = b_iter.next().unwrap();
+                    std::iter::once(b_iter.fold(first_of_b, reduce_ref)).collect::<LinkedList<_>>()
+                }
             }
         };
         let consumer = TwoLevelsConsumer {
@@ -42,7 +46,6 @@ pub trait BlockedReducingIterator: ParallelIterator {
             .drive_unindexed(consumer)
             .into_iter()
             .next()
-            .unwrap()
     }
 }
 
