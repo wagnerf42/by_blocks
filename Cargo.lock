@@ -76,13 +76,12 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 [[package]]
 name = "fast-tracer"
 version = "0.1.0"
-source = "git+https://github.com/wagnerf42/fast-tracer#97f2838cccf56e845d130cc3e75e645bd6d7fd1a"
+source = "git+https://github.com/wagnerf42/fast-tracer#77afe1a4a95f5519c829bfcf84e1464e6ef0f109"
 dependencies = [
  "either",
  "itertools",
  "lazy_static",
  "rand",
- "rayon",
  "tracing",
  "tracing-core",
 ]
@@ -226,8 +225,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.4.0"
-source = "git+https://github.com/wagnerf42/rayon?branch=tracing#41da67cfbb605c9f3d4fba6732e511a4f2d11763"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcf6960dc9a5b4ee8d3e4c5787b4a112a8818e0290a42ff664ad60692fdf2032"
 dependencies = [
  "autocfg",
  "crossbeam-deque",
@@ -237,15 +237,15 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.8.0"
-source = "git+https://github.com/wagnerf42/rayon?branch=tracing#41da67cfbb605c9f3d4fba6732e511a4f2d11763"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8c4fec834fb6e6d2dd5eece3c7b432a52f0ba887cf40e595190c4107edc08bf"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-utils",
  "lazy_static",
  "num_cpus",
- "tracing",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
 use by_blocks::prelude::*;
 use fast_tracer::svg;
 use rayon::prelude::*;
+use std::collections::LinkedList;
 
 fn main() {
     println!("try me with two threads");
@@ -28,9 +29,9 @@ fn main() {
     println!("********* filter collect ********");
     let v2 = svg("blocked_filter_collect.svg", || {
         let start = std::time::Instant::now();
-        let v2: Vec<i32> = (0..16_000_000)
+        let v2: Vec<i32> = (0..100_000_000)
             .into_par_iter()
-            .by_blocks_iter(std::iter::repeat(1_000_000))
+            .by_blocks_iter(std::iter::repeat(10_000_000))
             .filter(|&e| e % 2 == 0)
             .fold(Vec::new, |mut v, e| {
                 v.push(e);
@@ -47,10 +48,28 @@ fn main() {
     .expect("failed saving svg");
     let v = svg("rayon_collect.svg", || {
         let start = std::time::Instant::now();
-        let v: Vec<i32> = (0..16_000_000)
+        let v: Vec<i32> = (0..100_000_000)
             .into_par_iter()
             .filter(|&e| e % 2 == 0)
-            .collect();
+            .fold(Vec::new, |mut v, e| {
+                v.push(e);
+                v
+            })
+            .map(|v| std::iter::once(v).collect::<LinkedList<_>>())
+            .reduce(LinkedList::new, |mut l1, mut l2| {
+                l1.append(&mut l2);
+                l1
+            })
+            .into_iter()
+            .fold(None, |maybe_v: Option<Vec<_>>, mut v2| {
+                if let Some(mut v) = maybe_v {
+                    v.append(&mut v2);
+                    Some(v)
+                } else {
+                    Some(v2)
+                }
+            })
+            .unwrap();
         println!("rayon: {:?}", start.elapsed());
         v
     })
@@ -66,31 +85,28 @@ fn main() {
     let mut v = vec![1u64; 100_000_000];
     svg("blocks_prefix.svg", || {
         let start = std::time::Instant::now();
-        let init_values = vec![0u64; rayon::current_num_threads()];
         v.par_iter_mut()
             .by_blocks_iter(std::iter::repeat(1_000_000))
-            .fold(
-                || {
-                    let thread = rayon::current_thread_index().unwrap();
-                    let init = &init_values[thread];
-                    let p = init as *const u64 as *mut u64;
-                    let r = unsafe { p.as_mut() }.unwrap();
-                    *r = 0;
-                    r
-                },
-                |old_e, e| {
-                    *e += *old_e;
-                    e
-                },
-            )
-            .reduce_with(|e1, e2| {
-                let mut start = e1 as *mut u64;
-                let end = e2 as *mut _;
-                let size = (end as usize - start as usize) / 8;
-                start = unsafe { start.add(1) };
-                let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
-                slice.iter_mut().for_each(|e| *e += *e1);
-                e2
+            .fold(Default::default, |maybe_old_e: Option<&mut u64>, e| {
+                *e += maybe_old_e.map(|e| *e).unwrap_or(0);
+                Some(e)
+            })
+            .reduce(Default::default, |maybe_e1, maybe_e2| {
+                if let Some(e1) = maybe_e1 {
+                    if let Some(e2) = maybe_e2 {
+                        let mut start = e1 as *mut u64;
+                        let end = e2 as *mut _;
+                        let size = (end as usize - start as usize) / 8; // already one less
+                        start = unsafe { start.add(1) };
+                        let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
+                        slice.iter_mut().for_each(|e| *e += *e1);
+                        Some(e2)
+                    } else {
+                        Some(e1)
+                    }
+                } else {
+                    maybe_e2
+                }
             });
         println!("by_blocks: {:?}", start.elapsed());
     })
@@ -100,31 +116,28 @@ fn main() {
     let mut v = vec![1u64; 100_000_000];
     svg("rayon_prefix.svg", || {
         let start = std::time::Instant::now();
-        let init_values = vec![0u64; rayon::current_num_threads()];
         v.par_iter_mut()
             .by_blocks_iter(std::iter::once(std::usize::MAX))
-            .fold(
-                || {
-                    let thread = rayon::current_thread_index().unwrap();
-                    let init = &init_values[thread];
-                    let p = init as *const u64 as *mut u64;
-                    let r = unsafe { p.as_mut() }.unwrap();
-                    *r = 0;
-                    r
-                },
-                |old_e, e| {
-                    *e += *old_e;
-                    e
-                },
-            )
-            .reduce_with(|e1, e2| {
-                let mut start = e1 as *mut u64;
-                let end = e2 as *mut _;
-                let size = (end as usize - start as usize) / 8; // already one less
-                start = unsafe { start.add(1) };
-                let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
-                slice.iter_mut().for_each(|e| *e += *e1);
-                e2
+            .fold(Default::default, |maybe_old_e: Option<&mut u64>, e| {
+                *e += maybe_old_e.map(|e| *e).unwrap_or(0);
+                Some(e)
+            })
+            .reduce(Default::default, |maybe_e1, maybe_e2| {
+                if let Some(e1) = maybe_e1 {
+                    if let Some(e2) = maybe_e2 {
+                        let mut start = e1 as *mut u64;
+                        let end = e2 as *mut _;
+                        let size = (end as usize - start as usize) / 8; // already one less
+                        start = unsafe { start.add(1) };
+                        let slice = unsafe { std::slice::from_raw_parts_mut(start, size as usize) };
+                        slice.iter_mut().for_each(|e| *e += *e1);
+                        Some(e2)
+                    } else {
+                        Some(e1)
+                    }
+                } else {
+                    maybe_e2
+                }
             });
         println!("rayon: {:?}", start.elapsed());
     })

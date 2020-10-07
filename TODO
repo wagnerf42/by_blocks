@@ -1,4 +1,7 @@
-- we need to double check performance gains for filter_collect
-    ---> why gains on desktop but not on laptop ? is it cache size ? do i take right size ?
-- we need an option for results in by_blocks_iter
-    (current result init is not ok for prefix)
+- we need to double check performance gains
+
+    on prefix it seems ok : i took the value which fits my 10MB cache and it is good.
+    higher values immediately decrease performances
+
+    filter collect is weird though. there are differences between the two algorithms but
+    cache sizes don't seem to make a difference
