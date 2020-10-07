@@ -1,7 +1,34 @@
-- we need to double check performance gains
+two threads, without logs:
 
-    on prefix it seems ok : i took the value which fits my 10MB cache and it is good.
-    higher values immediately decrease performances
+╭─wagnerf@hopi ~/code/by_blocks  ‹master*›
+╰─➤  CARGO_NUM_THREADS=2 cargo run --release
+   Compiling by_blocks v0.1.0 (/home/wagnerf/code/by_blocks)
+       Finished release [optimized] target(s) in 2.43s
+            Running `target/release/by_blocks`
+            try me with two threads
+            by blocks: 237.898277ms
+            rayon: 468.06849ms
+            ********* filter collect ********
+            by blocks: 356.800051ms
+            rayon: 388.690912ms
+            ******* prefix ********
+            by_blocks: 150.339333ms
+            rayon: 164.285918ms
 
-    filter collect is weird though. there are differences between the two algorithms but
-    cache sizes don't seem to make a difference
+two threads with logs:
+
+╭─wagnerf@hopi ~/code/by_blocks  ‹master*›
+╰─➤  CARGO_NUM_THREADS=2 cargo run --release
+    Updating git repository `https://github.com/wagnerf42/rayon`
+       Compiling by_blocks v0.1.0 (/home/wagnerf/code/by_blocks)
+           Finished release [optimized] target(s) in 3.09s
+                Running `target/release/by_blocks`
+                try me with two threads
+                by blocks: 240.322136ms
+                rayon: 463.067504ms
+                ********* filter collect ********
+                by blocks: 369.193965ms
+                rayon: 383.709585ms
+                ******* prefix ********
+                by_blocks: 153.28351ms
+                rayon: 166.157152ms
