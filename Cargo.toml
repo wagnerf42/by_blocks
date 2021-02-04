@@ -11,3 +11,4 @@ rayon={git="https://github.com/wagnerf42/rayon", branch="tracing"}
 # rayon="*"
 fast-tracer={git="https://github.com/wagnerf42/fast-tracer"}
 # fast-tracer={path="../fast-tracer"}
+tracing="*"
